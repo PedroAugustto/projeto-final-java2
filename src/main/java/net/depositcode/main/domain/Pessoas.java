@@ -1,5 +1,6 @@
 package net.depositcode.main.domain;
 
+import java.io.Serializable;
 import java.time.LocalDate;
 
 import javax.persistence.Column;
@@ -7,14 +8,20 @@ import javax.persistence.Entity;
 import javax.persistence.GeneratedValue;
 import javax.persistence.GenerationType;
 import javax.persistence.Id;
+import javax.persistence.JoinColumn;
+import javax.persistence.OneToOne;
 import javax.persistence.Table;
 import javax.validation.constraints.NotNull;
 import javax.validation.constraints.Past;
 
+import com.fasterxml.jackson.annotation.JsonIgnore;
+
 @Entity
 @Table(name = "pessoas")
-public class Pessoas {
+public class Pessoas implements Serializable{
  
+	private static final long serialVersionUID = 1L;
+
 	@Id
 	@GeneratedValue(strategy = GenerationType.IDENTITY)
 	private Integer id;
@@ -32,6 +39,11 @@ public class Pessoas {
 	@Column(columnDefinition = "Date")
 	private LocalDate dataNascimento;
     
+	@OneToOne
+	@JsonIgnore
+	@JoinColumn(name="empresa_id", nullable = true)
+	private Empresa empresa;
+	
 	public Pessoas() {
 		super();
 	}
@@ -76,6 +88,14 @@ public class Pessoas {
 		this.dataNascimento = dataNascimento;
 	}
 
+	public Empresa getEmpresa() {
+		return empresa;
+	}
+
+	public void setEmpresa(Empresa empresa) {
+		this.empresa = empresa;
+	}
+
 	@Override
 	public int hashCode() {
 		final int prime = 31;
@@ -99,6 +119,12 @@ public class Pessoas {
 		} else if (!id.equals(other.id))
 			return false;
 		return true;
+	}
+
+	@Override
+	public String toString() {
+		return "Pessoas [id=" + id + ", nome=" + nome + ", cpf=" + cpf + ", dataNascimento=" + dataNascimento
+				+ ", empresas=" + empresa + "]";
 	}
 
 

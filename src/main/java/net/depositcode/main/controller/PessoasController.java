@@ -1,10 +1,13 @@
 package net.depositcode.main.controller;
 
+import java.io.Serializable;
+import java.net.URI;
 import java.time.LocalDate;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
+import java.util.stream.Collectors;
 
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.HttpStatus;
@@ -18,27 +21,32 @@ import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
+import org.springframework.web.servlet.support.ServletUriComponentsBuilder;
 
 import net.depositcode.main.domain.Pessoas;
+import net.depositcode.main.dto.PessoasDTO;
 import net.depositcode.main.repository.PessoaRepository;
 
 @RestController
 @RequestMapping("/pessoas")
-public class PessoasController {
+public class PessoasController implements Serializable {
+
+	private static final long serialVersionUID = 1L;
 
 	@Autowired
 	private PessoaRepository repository;
-
+	
 	@GetMapping("/todos")
-	public ResponseEntity<List<Pessoas>> getAll() {
+	public ResponseEntity<List<PessoasDTO>> getAll() {
 
 		List<Pessoas> pessoasTodos = repository.findAll();
+		List<PessoasDTO> pessoasDTO = pessoasTodos.stream().map(obj -> new PessoasDTO(obj)).collect(Collectors.toList());
 
-		return ResponseEntity.ok(pessoasTodos);
+		return ResponseEntity.ok(pessoasDTO);
 	}
 
 	@GetMapping("/{codigo}")
-	public ResponseEntity<Pessoas> getPessoa(@PathVariable String codigo) {
+	public ResponseEntity<PessoasDTO> getPessoa(@PathVariable String codigo) {
 
 		Pessoas existente = repository.findByCpf(codigo);
 		existente = (existente != null) ? existente : repository.findById(Integer.valueOf(codigo));
@@ -46,11 +54,11 @@ public class PessoasController {
 		if (existente == null)
 			return ResponseEntity.notFound().build();
 
-		return ResponseEntity.ok(existente);
+		return ResponseEntity.ok(new PessoasDTO(existente));
 	}
 
 	@GetMapping
-	public ResponseEntity<Set<Pessoas>> getByQueryString(@RequestParam Map<String, String> parametros) {
+	public ResponseEntity<Set<PessoasDTO>> getByQueryString(@RequestParam Map<String, String> parametros) {
 
 		Set<Pessoas> encontrados = new HashSet<Pessoas>();
 		List<Pessoas> encontradosNome;
@@ -59,22 +67,12 @@ public class PessoasController {
 		Pessoas encontradoId;
 
 		encontradosNome = repository.findAllByNome(parametros.getOrDefault("nome", ""));
-
-		if (encontradosNome != null) {
-			for (Pessoas pessoas : encontradosNome) {
-				encontrados.add(pessoas);
-
-			}
-		}
+		encontradosNome.stream().filter(obj -> obj != null).forEach(obj -> encontrados.add(obj));
+	
 
 		encontradosDataNascimento = repository.findAllByDataNascimento(LocalDate.parse(parametros.getOrDefault("dataNascimento", "1900-01-01")));
-
-		if (encontradosDataNascimento != null) {
-			for (Pessoas pessoas : encontradosDataNascimento) {
-				encontrados.add(pessoas);
-
-			}
-		}
+		encontradosDataNascimento.stream().filter(obj -> obj != null).forEach(obj -> encontrados.add(obj));
+		
 
 		encontradoCpf = repository.findByCpf(parametros.getOrDefault("cpf", ""));
 		if (encontradoCpf != null) {
@@ -85,11 +83,13 @@ public class PessoasController {
 		if (encontradoId != null) {
 			encontrados.add(encontradoId);
 		}
-		
-		if(encontrados.size() == 0)
+
+		if (encontrados.size() == 0)
 			return ResponseEntity.notFound().build();
-		
-		return ResponseEntity.ok(encontrados);
+
+		Set<PessoasDTO> encontradosDto = encontrados.stream().map(obj -> new PessoasDTO(obj)).collect(Collectors.toSet());
+
+		return ResponseEntity.ok(encontradosDto);
 	}
 
 	@PostMapping
@@ -99,15 +99,14 @@ public class PessoasController {
 
 		if (existente != null)
 			return new ResponseEntity<>(HttpStatus.FORBIDDEN);
-
+		
 		novo.setId(null);
+		
 		repository.save(novo);
+		System.out.println(novo);
+		URI uri = ServletUriComponentsBuilder.fromCurrentRequest().path("/{id}").buildAndExpand(novo.getId()).toUri();
 
-		// URI uri =
-		// ServletUriComponentsBuilder.fromCurrentRequest().path("/{id}").buildAndExpand(novo.getId()).toUri();
-		// return ResponseEntity.created(uri).build();
-
-		return new ResponseEntity<>(novo, HttpStatus.CREATED);
+		return ResponseEntity.created(uri).build();
 	}
 
 	@PutMapping
@@ -118,9 +117,8 @@ public class PessoasController {
 		if (existente == null)
 			return ResponseEntity.notFound().build();
 
-		
-		existente.setDataNascimento(modificado.getDataNascimento() != null ? modificado.getDataNascimento() : existente.getDataNascimento());
-		existente.setNome(modificado.getNome() != null ? modificado.getNome() :existente.getNome());
+		existente.setDataNascimento(modificado.getDataNascimento() != null ? modificado.getDataNascimento(): existente.getDataNascimento());
+		existente.setNome(modificado.getNome() != null ? modificado.getNome() : existente.getNome());
 
 		repository.save(existente);
 
